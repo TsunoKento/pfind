@@ -234,3 +234,60 @@ pfind "panic" --json . | jq -r '.path'
 - `--follow-symlinks` は循環検出（訪問済みinode/realpath）を必須要件にする
 - ビルド: `go build -trimpath`
 - Goバージョン: 1.21以上必須（`slices`, `maps` パッケージ等）
+
+---
+
+## 13. ディレクトリ構成
+
+### 構成ツリー
+
+```
+pfind/
+├── main.go                        # エントリーポイント（cmd.Execute() のみ）
+├── go.mod
+├── go.sum
+├── README.md
+│
+├── cmd/
+│   ├── root.go                    # CLI フラグ定義・バリデーション・実行
+│   └── version.go                 # -V / --version 処理
+│
+├── internal/
+│   ├── config/
+│   │   └── config.go              # CLI オプション構造体（全パッケージ共通）
+│   ├── walker/
+│   │   ├── walker.go              # ディレクトリ再帰走査 → ファイルパス channel
+│   │   └── walker_test.go
+│   ├── filter/
+│   │   ├── filter.go              # include/exclude glob・バイナリ判定・max-bytes
+│   │   └── filter_test.go
+│   ├── matcher/
+│   │   ├── matcher.go             # fixed/regex/ignore-case パターンマッチ
+│   │   └── matcher_test.go
+│   ├── worker/
+│   │   ├── worker.go              # ワーカープール（ファイル読み込み→検索→結果送信）
+│   │   └── worker_test.go
+│   ├── output/
+│   │   ├── output.go              # Printer インターフェース + テキスト出力
+│   │   ├── json.go                # JSON Lines 出力
+│   │   └── output_test.go
+│   └── search/
+│       ├── search.go              # オーケストレーター（goroutine パイプライン制御）
+│       └── search_test.go
+│
+└── testdata/
+    └── fixtures/
+        ├── simple/                # 基本ファイルツリー（結合テスト用）
+        ├── unicode/               # Unicode ファイル名テスト用
+        └── binary/               # バイナリファイル判定テスト用
+```
+
+### 設計根拠
+
+| 判断 | 理由 |
+|------|------|
+| ルート `main.go`（`cmd/pfind/` ではない） | 単一バイナリのため。`go install` パスも自然になる |
+| `internal/` にすべてのロジック | 外部からのインポートをコンパイラレベルで禁止 |
+| `internal/config/` を独立させる | CLIフレームワーク依存を `cmd/` に閉じ、循環参照を防ぐ |
+| パイプラインステージ別パッケージ | walker / worker / output を個別にユニットテスト可能にする |
+| `testdata/fixtures/` | Go 慣例のテストデータ置き場（ビルド対象外） |
