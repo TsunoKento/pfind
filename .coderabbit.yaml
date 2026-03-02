@@ -1,0 +1,67 @@
+language: "ja-JP"
+
+reviews:
+  profile: "chill"
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: false
+  review_details: false
+
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - "main"
+
+  path_filters:
+    - "**/*.go"
+    - "!go.sum"
+    - "!**/*.md"
+    - "!Dockerfile"
+    - "!docker-compose.yml"
+
+  path_instructions:
+    - path: "internal/worker/**"
+      instructions: >
+        ゴルーチンとチャネルを使ったワーカープールパッケージ。
+        並行処理の設計は意図的であり、mutex による代替実装は提案しないこと。
+        context.Context によるキャンセル伝播が正しく実装されているか確認すること。
+
+    - path: "internal/search/**"
+      instructions: >
+        walker → worker → output のパイプラインを統括する Orchestrator。
+        各パッケージへの依存は設計通り。パイプライン全体のライフサイクル管理を確認すること。
+
+    - path: "internal/walker/**"
+      instructions: >
+        ディレクトリ走査パッケージ。ファイルパスをチャネルに送出する。
+        再帰処理のゴルーチン安全性と、context キャンセル時の正常終了を確認すること。
+
+    - path: "internal/filter/**"
+      instructions: >
+        include/exclude の glob フィルタとバイナリ検出を担当する。
+        純粋関数として実装することが想定されており、副作用のある実装は避けること。
+
+    - path: "internal/matcher/**"
+      instructions: >
+        固定文字列・正規表現・大文字小文字無視マッチングを担当する。
+        正規表現のコンパイルはキャッシュされることが期待される。
+
+    - path: "internal/output/**"
+      instructions: >
+        output.go がテキスト形式、json.go が JSON Lines 形式の出力フォーマッタ。
+        書き込みエラーの処理を確認すること。
+
+    - path: "internal/config/**"
+      instructions: >
+        CLI フラグのオプション構造体。バリデーションロジックはここではなく
+        各パッケージ側に持つことが想定されている。
+
+    - path: "cmd/**"
+      instructions: >
+        CLI のエントリポイント。cobra を使ったコマンド定義を想定。
+        ビジネスロジックは internal/ に委譲し、このパッケージには最小限のコードのみ置く。
+
+chat:
+  auto_reply: true
